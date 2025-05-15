@@ -1,0 +1,175 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhân Ma Trận Hình Chữ Nhật</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .matrix-input {
+            margin: 20px 0;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        td {
+            border: 1px solid #ccc;
+            padding: 5px;
+        }
+        input {
+            width: 60px;
+            padding: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Nhân Ma Trận Hình Chữ Nhật</h1>
+    
+    <div class="matrix-input">
+        <h3>Ma trận A</h3>
+        Số hàng: <input type="number" id="rowsA" min="1" value="2">
+        Số cột: <input type="number" id="colsA" min="1" value="2">
+        <button onclick="createMatrix('A')">Tạo ma trận A</button>
+        <div id="matrixA"></div>
+    </div>
+
+    <div class="matrix-input">
+        <h3>Ma trận B</h3>
+        Số hàng: <input type="number" id="rowsB" min="1" value="2">
+        Số cột: <input type="number" id="colsB" min="1" value="2">
+        <button onclick="createMatrix('B')">Tạo ma trận B</button>
+        <div id="matrixB"></div>
+    </div>
+
+    <button onclick="multiplyMatrices()">Nhân ma trận</button>
+    <div id="result"></div>
+
+    <script>
+        function createMatrix(matrixId) {
+            const rows = parseInt(document.getElementById(`rows${matrixId}`).value);
+            const cols = parseInt(document.getElementById(`cols${matrixId}`).value);
+            let html = '<table>';
+            
+            for (let i = 0; i < rows; i++) {
+                html += '<tr>';
+                for (let j = 0; j < cols; j++) {
+                    html += `<td><input type="number" id="${matrixId}${i}${j}" value="0"></td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            document.getElementById(`matrix${matrixId}`).innerHTML = html;
+        }
+
+        function getMatrixValues(matrixId, rows, cols) {
+            const matrix = [];
+            for (let i = 0; i < rows; i++) {
+                const row = [];
+                for (let j = 0; j < cols; j++) {
+                    const value = parseFloat(document.getElementById(`${matrixId}${i}${j}`).value);
+                    row.push(value);
+                }
+                matrix.push(row);
+            }
+            return matrix;
+        }
+
+        function multiplyMatrices() {
+            const rowsA = parseInt(document.getElementById('rowsA').value);
+            const colsA = parseInt(document.getElementById('colsA').value);
+            const rowsB = parseInt(document.getElementById('rowsB').value);
+            const colsB = parseInt(document.getElementById('colsB').value);
+
+            if (colsA !== rowsB) {
+                document.getElementById('result').innerHTML = 
+                    '<p style="color: red;">Lỗi: Số cột của ma trận A phải bằng số hàng của ma trận B!</p>';
+                return;
+            }
+
+            const matrixA = getMatrixValues('A', rowsA, colsA);
+            const matrixB = getMatrixValues('B', rowsB, colsB);
+            const result = [];
+
+            for (let i = 0; i < rowsA; i++) {
+                result[i] = [];
+                for (let j = 0; j < colsB; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < colsA; k++) {
+                        sum += matrixA[i][k] * matrixB[k][j];
+                    }
+                    result[i][j] = sum;
+                }
+            }
+
+            let resultHtml = '<h3>Kết quả ma trận C = A × B</h3><table>';
+            for (let i = 0; i < rowsA; i++) {
+                resultHtml += '<tr>';
+                for (let j = 0; j < colsB; j++) {
+                    resultHtml += `<td>${result[i][j]}</td>`;
+                }
+                resultHtml += '</tr>';
+            }
+            resultHtml += '</table>';
+            document.getElementById('result').innerHTML = resultHtml;
+        }
+    </script>
+</body>
+</html>
