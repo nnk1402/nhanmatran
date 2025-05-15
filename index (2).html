@@ -1,0 +1,383 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhân Ma Trận - Hana-chan's Math Adventure</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+        body {
+            font-family: 'Comic Neue', cursive;
+            background: url('https://i.imgur.com/7nZ9q2v.jpg') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+            position: relative;
+            z-index: 2;
+            animation: bounceIn 0.8s ease-out;
+        }
+        @keyframes bounceIn {
+            0% { opacity: 0; transform: scale(0.8); }
+            60% { opacity: 1; transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        h1 {
+            text-align: center;
+            color: #ff6f61;
+            font-size: 2.8em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        h2, h3 {
+            color: #d81b60;
+            margin-top: 20px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        .input-section, .result-section {
+            margin-bottom: 30px;
+        }
+        .matrix-input {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 182, 193, 0.2);
+            border-radius: 15px;
+            border: 2px solid #ff99cc;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: bold;
+            color: #c2185b;
+        }
+        input[type="number"] {
+            width: 80px;
+            padding: 10px;
+            border: 2px solid #ff99cc;
+            border-radius: 10px;
+            font-size: 1em;
+            background: #fff;
+            transition: border-color 0.3s ease, transform 0.2s ease;
+        }
+        input[type="number"]:focus {
+            border-color: #ff4081;
+            transform: scale(1.05);
+            outline: none;
+        }
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(45deg, #ff4081, #f06292);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 64, 129, 0.4);
+        }
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 64, 129, 0.6);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        table {
+            border-collapse: collapse;
+            margin: 15px auto;
+        }
+        td {
+            padding: 10px;
+        }
+        .matrix-table input[type="number"] {
+            width: 60px;
+            padding: 8px;
+            border: 2px solid #ffccff;
+            border-radius: 8px;
+            text-align: center;
+            background: #fff;
+        }
+        .matrix-table input[type="number"]:focus {
+            border-color: #ff4081;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 245, 247, 0.9);
+            border-radius: 15px;
+            border: 2px solid #ff99cc;
+        }
+        .result table td {
+            background: #fff;
+            border: 2px solid #ffccff;
+            border-radius: 8px;
+            text-align: center;
+            color: #d81b60;
+            font-weight: bold;
+        }
+        .error {
+            color: #d32f2f;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        .character {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 3;
+            animation: sway 2s ease-in-out infinite;
+        }
+        .character img {
+            width: 150px;
+            height: auto;
+        }
+        .speech-bubble {
+            position: absolute;
+            top: -60px;
+            left: -180px;
+            background: #fff;
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 2px solid #ff4081;
+            color: #d81b60;
+            font-size: 0.9em;
+            max-width: 150px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            right: 20px;
+            border-width: 10px;
+            border-style: solid;
+            border-color: #fff transparent transparent transparent;
+        }
+        @keyframes sway {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nhân Ma Trận - Hana-chan's Math Adventure ✨</h1>
+        <div class="input-section">
+            <h2>Nhập Kích Thước Ma Trận</h2>
+            <div class="input-group">
+                <label>Ma trận A:</label>
+                <input type="number" id="rowsA" min="1" value="2" placeholder="Hàng">
+                <span>×</span>
+                <input type="number" id="colsA" min="1" value="2" placeholder="Cột">
+            </div>
+            <div class="input-group">
+                <label>Ma trận B:</label>
+                <input type="number" id="rowsB" min="1" value="2" placeholder="Hàng">
+                <span>×</span>
+                <input type="number" id="colsB" min="1" value="2" placeholder="Cột">
+            </div>
+            <button onclick="generateMatrixInputs()">Tạo Ma Trận</button>
+        </div>
+        <div id="matrixA" class="matrix-input"></div>
+        <div id="matrixB" class="matrix-input"></div>
+        <div class="result-section">
+            <button onclick="multiplyMatrices()">Tính Nhân Ma Trận</button>
+            <div id="result" class="result"></div>
+        </div>
+    </div>
+    <div class="character">
+        <img src="https://i.imgur.com/4Yc3Z8T.png" alt="Hana-chan">
+        <div class="speech-bubble" id="speechBubble"></div>
+    </div>
+
+    <script>
+        const cheers = [
+            "Cố lên! Nhân ma trận dễ như ăn kẹo nè! 🍬",
+            "Hana-chan tin bạn sẽ làm được! 💪",
+            "Toán học thật vui, phải không? 😊",
+            "Chỉ cần tập trung, bạn sẽ giải quyết nhanh thôi! ✨",
+            "Hana-chan đang cổ vũ cho bạn! 🎉"
+        ];
+
+        function generateMatrixInputs() {
+            const rowsA = parseInt(document.getElementById('rowsA').value);
+            const colsA = parseInt(document.getElementById('colsA').value);
+            const rowsB = parseInt(document.getElementById('rowsB').value);
+            const colsB = parseInt(document.getElementById('colsB').value);
+
+            if (isNaN(rowsA) || isNaN(colsA) || isNaN(rowsB) || isNaN(colsB) || 
+                rowsA < 1 || colsA < 1 || rowsB < 1 || colsB < 1) {
+                document.getElementById('result').innerHTML = '<p class="error">Vui lòng nhập kích thước hợp lệ (số nguyên dương).</p>';
+                document.getElementById('speechBubble').style.display = 'none';
+                return;
+            }
+
+            let htmlA = '<h3>Ma trận A</h3><table class="matrix-table">';
+            for (let i = 0; i < rowsA; i++) {
+                htmlA += '<tr>';
+                for (let j = 0; j < colsA; j++) {
+                    htmlA += `<td><input type="number" id="a_${i}_${j}" value="0"></td>`;
+                }
+                htmlA += '</tr>';
+            }
+            htmlA += '</table>';
+            document.getElementById('matrixA').innerHTML = htmlA;
+
+            let htmlB = '<h3>Ma trận B</h3><table class="matrix-table">';
+            for (let i = 0; i < rowsB; i++) {
+                htmlB += '<tr>';
+                for (let j = 0; j < colsB; j++) {
+                    htmlB += `<td><input type="number" id="b_${i}_${j}" value="0"></td>`;
+                }
+                htmlB += '</tr>';
+            }
+            htmlB += '</table>';
+            document.getElementById('matrixB').innerHTML = htmlB;
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('speechBubble').style.display = 'none';
+        }
+
+        function multiplyMatrices() {
+            const rowsA = parseInt(document.getElementById('rowsA').value);
+            const colsA = parseInt(document.getElementById('colsA').value);
+            const rowsB = parseInt(document.getElementById('rowsB').value);
+            const colsB = parseInt(document.getElementById('colsB').value);
+
+            if (colsA !== rowsB) {
+                document.getElementById('result').innerHTML = 
+                    '<p class="error">Không thể nhân: Số cột của A phải bằng số hàng của B.</p>';
+                document.getElementById('speechBubble').innerText = 'Ôi, kích thước không khớp! Thử lại nhé! 😅';
+                document.getElementById('speechBubble').style.display = 'block';
+                return;
+            }
+
+            let A = [];
+            for (let i = 0; i < rowsA; i++) {
+                A[i] = [];
+                for (let j = 0; j < colsA; j++) {
+                    const value = parseFloat(document.getElementById(`a_${i}_${j}`).value);
+                    if (isNaN(value)) {
+                        document.getElementById('result').innerHTML = 
+                            '<p class="error">Vui lòng nhập đầy đủ số cho ma trận A.</p>';
+                        document.getElementById('speechBubble').innerText = 'Nhập đủ số cho ma trận A nha! 😊';
+                        document.getElementById('speechBubble').style.display = 'block';
+                        return;
+                    }
+                    A[i][j] = value;
+                }
+            }
+
+            let B = [];
+            for (let i = 0; i < rowsB; i++) {
+                B[i] = [];
+                for (let j = 0; j < colsB; j++) {
+                    const value = parseFloat(document.getElementById(`b_${i}_${j}`).value);
+                    if (isNaN(value)) {
+                        document.getElementById('result').innerHTML = 
+                            '<p class="error">Vui lòng nhập đầy đủ số cho ma trận B.</p>';
+                        document.getElementById('speechBubble').innerText = 'Nhập đủ số cho ma trận B nha! 😊';
+                        document.getElementById('speechBubble').style.display = 'block';
+                        return;
+                    }
+                    B[i][j] = value;
+                }
+            }
+
+            let result = [];
+            for (let i = 0; i < rowsA; i++) {
+                result[i] = [];
+                for (let j = 0; j < colsB; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < colsA; k++) {
+                        sum += A[i][k] * B[k][j];
+                    }
+                    result[i][j] = sum;
+                }
+            }
+
+            let htmlResult = '<h3>Kết quả A × B</h3><table class="matrix-table">';
+            for (let i = 0; i < rowsA; i++) {
+                htmlResult += '<tr>';
+                for (let j = 0; j < colsB; j++) {
+                    htmlResult += `<td>${result[i][j]}</td>`;
+                }
+                htmlResult += '</tr>';
+            }
+            htmlResult += '</table>';
+            document.getElementById('result').innerHTML = htmlResult;
+            document.getElementById('speechBubble').innerText = cheers[Math.floor(Math.random() * cheers.length)];
+            document.getElementById('speechBubble').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
